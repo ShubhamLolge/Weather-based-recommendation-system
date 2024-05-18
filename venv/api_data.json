@@ -1,0 +1,87 @@
+{
+    "city": {
+        "coord": {
+            "lat": 51.48, 
+            "lon": -3.18
+        }, 
+        "country": "GB", 
+        "id": 2653822, 
+        "name": "Cardiff", 
+        "population": 302139, 
+        "sunrise": 1715660520, 
+        "sunset": 1715716577, 
+        "timezone": 3600
+    }, 
+    "cnt": 40, 
+    "cod": 200, 
+    "list": [
+        {
+            "clouds": {"all": 75}, 
+            "dt": 1715720400, 
+            "dt_txt": "2024-05-14 21: 00: 00", 
+            "main": 
+            {
+                "feels_like": 14.13, 
+                "grnd_level": 994, 
+                "humidity": 83, 
+                "pressure": 999, 
+                "sea_level": 999, 
+                "temp": 14.46, 
+                "temp_kf": 2.48, 
+                "temp_max": 14.46, 
+                "temp_min": 11.98
+            }, 
+            "pop": 0.5, 
+            "rain": {"3h": 0.31}, 
+            "sys": {"pod": "n"}, 
+            "visibility": 10000, 
+            "weather": [
+                {
+                    "description": "light rain", 
+                    "icon": "10n", 
+                    "id": 500, 
+                    "main": "Rain"
+                }
+            ], 
+            "wind": {
+                "deg": 106, 
+                "gust": 8.38, 
+                "speed": 3.88
+            }
+        },
+        {
+            "clouds": {"all": 75}, 
+            "dt": 1715731200, 
+            "dt_txt": "2024-05-15 00: 00: 00", 
+            "main": 
+            {
+                "feels_like": 13.12, 
+                "grnd_level": 995, 
+                "humidity": 87, 
+                "pressure": 999, 
+                "sea_level": 999, 
+                "temp": 13.45, 
+                "temp_kf": 2.03, 
+                "temp_max": 13.45, 
+                "temp_min": 11.42
+            }, 
+            "pop": 0, 
+            "sys": {"pod": "n"}, 
+            "visibility": 10000, 
+            "weather": [
+                {
+                    "description": "broken clouds", 
+                    "icon": "04n", 
+                    "id": 803, 
+                    "main": "Clouds"
+                }
+            ], 
+            "wind": {
+                "deg": 102, 
+                "gust": 9.5, 
+                "speed": 4.84
+            }
+        }
+    ], 
+    "message": 0
+}
