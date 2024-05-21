@@ -14,3 +14,10 @@
 # 8.  
 
 # lets implement these step by step, implementing one step at a time and confirming that implementation is as expected everytime
+
+
+git add . 
+git commit -m "Add existing project files to Git"
+git branch -M branch_name
+git remote add origin repo_url
+git push -u origin branch_name
