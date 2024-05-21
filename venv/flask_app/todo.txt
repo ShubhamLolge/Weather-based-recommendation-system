@@ -1,0 +1,16 @@
+# 1.  Collecting Data - (already implemented)
+
+# 2.  Preparing the Data
+#     Putting together all the data you have and randomizing it. This helps make sure that data is evenly distributed, and the ordering does not affect the learning process.
+#     Cleaning the data to remove unwanted data, missing values, rows, and columns, duplicate values, data type conversion, etc. You might even have to restructure the dataset and change the rows and columns or index of rows and columns.
+#     Visualize the data to understand how it is structured and understand the relationship between various variables and classes present.
+#     Splitting the cleaned data into two sets - a training set and a testing set. The training set is the set your model learns from. A testing set is used to check the accuracy of your model after training.
+
+# 3.  Choosing a Model
+# 4.  Training the Model
+# 5.  Evaluating the Model
+# 6.  Parameter Tuning
+# 7.  Making Predictions
+# 8.  
+
+# lets implement these step by step, implementing one step at a time and confirming that implementation is as expected everytime
