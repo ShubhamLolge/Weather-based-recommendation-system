@@ -1,5 +1,17 @@
 {
     "cSpell.words": [
-        "jsonify"
+        "annot",
+        "bfill",
+        "cmap",
+        "coolwarm",
+        "dropna",
+        "dtypes",
+        "ffill",
+        "figsize",
+        "fillna",
+        "joblib",
+        "jsonify",
+        "pairplot",
+        "Wetherspoon"
     ]
 }

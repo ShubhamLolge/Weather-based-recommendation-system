@@ -67,7 +67,7 @@ def get_forecast():
     location = request.args.get('location')
     if not location:
         return jsonify({'error': 'Location parameter is required'}), 400
-    forecast_data = weather_api.get_forecast(location)
+    forecast_data = weather_api.get_forecast(location) # type: ignore
     return jsonify(forecast_data)
 
 if __name__ == '__main__':
