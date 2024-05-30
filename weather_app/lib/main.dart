@@ -1,11 +1,9 @@
-// ignore_for_file: avoid_print, avoid_web_libraries_in_flutter
-
 import 'dart:async';
-import 'dart:convert';
 import 'dart:html' as html;
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:weather_app/models/weather_data.dart';
+import 'package:weather_app/services/services.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,23 +33,20 @@ class SalesPredictionPage extends StatefulWidget {
 }
 
 class SalesPredictionPageState extends State<SalesPredictionPage> {
-  final TextEditingController _locationController = TextEditingController(text: "cardiff");
   final TextEditingController _storeNameController = TextEditingController(text: "The Mount Stuart - JD Wetherspoon");
-  final TextEditingController _storeLocationController = TextEditingController(text: "Cardiff Bay");
+  final TextEditingController _storeLocationController = TextEditingController(text: "Cardiff");
+  final Services services = Services();
+
   List<List<dynamic>> _csvData = [];
+
   String _prediction = '';
+  String csv = "";
+
+  WeatherData? weatherData;
+
   bool _isLoadingCsv = false;
   bool _isLoadingWeather = false;
   bool _isLoadingPrediction = false;
-  String csv = "";
-  double? temperature;
-  double? rain;
-  double? windSpeed;
-  int? humidity;
-  int? pressure;
-  int? visibility;
-  int? clouds;
-  String? weatherMain;
 
   void _loadCsvData() async {
     setState(() {
@@ -69,37 +64,24 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
   }
 
   Future<void> _fetchWeatherData() async {
-    final location = _locationController.text;
+    final location = _storeLocationController.text;
     if (location.isNotEmpty) {
       setState(() {
         _isLoadingWeather = true;
       });
 
       try {
-        final weatherUrl = 'http://api.openweathermap.org/data/2.5/weather?q=$location&appid=773211ac46a8a3e591f72ae278de8280&units=metric';
-        print('Fetching weather data from: $weatherUrl'); // Debugging line
+        WeatherData wd = await services.fetchWeather(
+          context: context,
+          location: location,
+        );
 
-        final weatherResponse = await http.get(Uri.parse(weatherUrl));
-
-        if (weatherResponse.statusCode == 200) {
-          final weatherData = json.decode(weatherResponse.body);
-          print('Weather data fetched successfully: $weatherData'); // Debugging line
-          setState(() {
-            temperature = weatherData['main']['temp'];
-            rain = weatherData['rain'] != null ? weatherData['rain']['1h'] ?? 0 : 0;
-            windSpeed = weatherData['wind']['speed'];
-            humidity = weatherData['main']['humidity'];
-            pressure = weatherData['main']['pressure'];
-            visibility = weatherData['visibility'];
-            clouds = weatherData['clouds']['all'];
-            weatherMain = weatherData['weather'][0]['main'];
-            _isLoadingWeather = false;
-          });
-        } else {
-          throw Exception('Error fetching weather data: ${weatherResponse.body}');
-        }
+        setState(() {
+          weatherData = wd;
+          _isLoadingWeather = false;
+        });
       } catch (e) {
-        print(e);
+        debugPrint(e.toString());
         setState(() {
           _prediction = 'Error: Could not fetch weather data.';
           _isLoadingWeather = false;
@@ -120,18 +102,10 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
       return;
     }
 
-    final location = _locationController.text;
     final storeName = _storeNameController.text;
     final storeLocation = _storeLocationController.text;
 
-    if (temperature == null ||
-        rain == null ||
-        windSpeed == null ||
-        humidity == null ||
-        pressure == null ||
-        visibility == null ||
-        clouds == null ||
-        weatherMain == null) {
+    if (weatherData == null) {
       setState(() {
         _prediction = 'Please fetch weather data first.';
       });
@@ -145,45 +119,24 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
     });
 
     try {
-      // Print the data being sent to the API
-      print(
-          'Sending data to Flask API: location: $location, temperature: $temperature, rain: $rain, wind_speed: $windSpeed, humidity: $humidity, pressure: $pressure, visibility: $visibility, clouds: $clouds, weather: $weatherMain, store_name: $storeName, store_location: $storeLocation, csv_data: $csvData');
-
-      // Send data to Flask API
-      final response = await http.post(
-        Uri.parse('http://127.0.0.1:5000/upload'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'location': location,
-          'temperature': temperature,
-          'rain': rain,
-          'wind_speed': windSpeed,
-          'humidity': humidity,
-          'pressure': pressure,
-          'visibility': visibility,
-          'clouds': clouds,
-          'weather_main': weatherMain,
-          'store_name': storeName,
-          'store_location': storeLocation,
-          'csv_data': csvData,
-        }),
+      final data = await services.uploadAndPredict(
+        context: context,
+        weatherData: weatherData!, // nullable
+        storeName: storeName,
+        storeLocation: storeLocation,
+        csvData: csvData,
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
+      setState(() {
+        if (data.containsKey('predicted_sales')) {
           _prediction = data['predicted_sales'][0].toString();
-          _isLoadingPrediction = false;
-        });
-      } else {
-        print('Error fetching prediction: ${response.body}'); // Debugging line
-        setState(() {
+        } else {
           _prediction = 'Error: Could not fetch prediction.';
-          _isLoadingPrediction = false;
-        });
-      }
+        }
+        _isLoadingPrediction = false;
+      });
     } catch (e) {
-      print('Exception: $e'); // Print any exception that occurs
+      debugPrint('Exception: $e');
       setState(() {
         _prediction = 'Error: Could not fetch prediction.';
         _isLoadingPrediction = false;
@@ -207,10 +160,6 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
             TextField(
               controller: _storeLocationController,
               decoration: const InputDecoration(labelText: 'Store Location'),
-            ),
-            TextField(
-              controller: _locationController,
-              decoration: const InputDecoration(labelText: 'Weather Location'),
             ),
             const SizedBox(height: 20),
             Row(
@@ -252,15 +201,23 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
                       const SizedBox(height: 10),
                       const Text("Weather Data", style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 20),
-                      Text(_locationController.text.isEmpty ? "No location data" : "location: ${_locationController.text}"),
-                      Text(temperature == null ? "No temperature data" : "temperature: $temperature"),
-                      Text(rain == null ? "No rain data" : "rain: $rain"),
-                      Text(windSpeed == null ? "No wind speed data" : "wind_speed: $windSpeed"),
-                      Text(humidity == null ? "No humidity data" : "humidity: $humidity"),
-                      Text(pressure == null ? "No pressure data" : "pressure: $pressure"),
-                      Text(visibility == null ? "No visibility data" : "visibility: $visibility"),
-                      Text(clouds == null ? "No clouds data" : "clouds: $clouds"),
-                      Text(weatherMain == null ? "No weather data" : "weather: $weatherMain"),
+                      Text(_storeLocationController.text.isEmpty ? "No location data" : "location: ${_storeLocationController.text}"),
+                      const SizedBox(height: 20),
+                      weatherData == null
+                          ? const Text("No Weather Data")
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("temperature: ${weatherData!.temperature}"),
+                                Text("rain: ${weatherData!.additionalProperties['rain']}"),
+                                Text("wind_speed: ${weatherData!.windSpeed}"),
+                                Text("humidity: ${weatherData!.humidity}"),
+                                Text("pressure: ${weatherData!.pressure}"),
+                                Text("visibility: ${weatherData!.visibility}"),
+                                Text("clouds: ${weatherData!.clouds}"),
+                                Text("weather: ${weatherData!.weatherMain}"),
+                              ],
+                            ),
                     ],
                   ),
                 ),
@@ -273,7 +230,14 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ElevatedButton(
-                        onPressed: _isLoadingPrediction ? null : _sendDataAndPredict,
+                        onPressed: _isLoadingPrediction
+                            ? null
+                            : () {
+                                setState(() {
+                                  _prediction = "";
+                                });
+                                _sendDataAndPredict();
+                              },
                         child: _isLoadingPrediction ? const CircularProgressIndicator() : const Text('Predict Sales'),
                       ),
                       const SizedBox(height: 10),

@@ -1,0 +1,657 @@
+// // // // // main.dart
+// import 'dart:async';
+// import 'dart:html' as html;
+// import 'package:csv/csv.dart';
+// import 'package:flutter/material.dart';
+// import 'package:weather_app/models/weather_data.dart';
+// import 'package:weather_app/services/services.dart';
+
+// void main() {
+//   runApp(const MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       debugShowCheckedModeBanner: false,
+//       title: 'Inventory Preview',
+//       theme: ThemeData(
+//         primarySwatch: Colors.blue,
+//       ),
+//       home: const SalesPredictionPage(),
+//     );
+//   }
+// }
+
+// class SalesPredictionPage extends StatefulWidget {
+//   const SalesPredictionPage({super.key});
+
+//   @override
+//   SalesPredictionPageState createState() => SalesPredictionPageState();
+// }
+
+// class SalesPredictionPageState extends State<SalesPredictionPage> {
+//   final TextEditingController _storeNameController = TextEditingController(text: "The Mount Stuart - JD Wetherspoon");
+//   final TextEditingController _storeLocationController = TextEditingController(text: "Cardiff");
+//   final Services services = Services();
+
+//   List<List<dynamic>> _csvData = [];
+
+//   String _prediction = '';
+//   String csv = "";
+
+//   WeatherData? weatherData;
+
+//   bool _isLoadingCsv = false;
+//   bool _isLoadingWeather = false;
+//   bool _isLoadingPrediction = false;
+
+//   void _loadCsvData() async {
+//     setState(() {
+//       _isLoadingCsv = true;
+//     });
+
+//     final inventoryPreview = InventoryPreview();
+//     final data = await inventoryPreview.loadCsvFile();
+//     final csvData = const ListToCsvConverter().convert(data);
+//     setState(() {
+//       _csvData = data;
+//       csv = csvData;
+//       _isLoadingCsv = false;
+//     });
+//   }
+
+//   Future<void> _fetchWeatherData() async {
+//     final location = _storeLocationController.text;
+//     if (location.isNotEmpty) {
+//       setState(() {
+//         _isLoadingWeather = true;
+//       });
+
+//       try {
+//         WeatherData wd = await services.fetchWeather(
+//           context: context,
+//           location: location,
+//         );
+
+//         setState(() {
+//           weatherData = wd;
+//           _isLoadingWeather = false;
+//         });
+//       } catch (e) {
+//         debugPrint(e.toString());
+//         setState(() {
+//           _prediction = 'Error: Could not fetch weather data.';
+//           _isLoadingWeather = false;
+//         });
+//       }
+//     } else {
+//       setState(() {
+//         _prediction = 'Please enter a location';
+//       });
+//     }
+//   }
+
+//   Future<void> _sendDataAndPredict() async {
+//     if (_csvData.isEmpty) {
+//       setState(() {
+//         _prediction = 'Please upload inventory data first.';
+//       });
+//       return;
+//     }
+
+//     final storeName = _storeNameController.text;
+//     final storeLocation = _storeLocationController.text;
+
+//     if (weatherData == null) {
+//       setState(() {
+//         _prediction = 'Please fetch weather data first.';
+//       });
+//       return;
+//     }
+
+//     final csvData = const ListToCsvConverter().convert(_csvData);
+
+//     setState(() {
+//       _isLoadingPrediction = true;
+//     });
+
+//     try {
+//       final data = await services.uploadAndPredict(
+//         context: context,
+//         weatherData: weatherData!, // nullable
+//         storeName: storeName,
+//         storeLocation: storeLocation,
+//         csvData: csvData,
+//       );
+
+//       setState(() {
+//         if (data.containsKey('predicted_sales')) {
+//           _prediction = data['predicted_sales'][0].toString();
+//         } else {
+//           _prediction = 'Error: Could not fetch prediction.';
+//         }
+//         _isLoadingPrediction = false;
+//       });
+//     } catch (e) {
+//       debugPrint('Exception: $e');
+//       setState(() {
+//         _prediction = 'Error: Could not fetch prediction.';
+//         _isLoadingPrediction = false;
+//       });
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     Size size = MediaQuery.of(context).size;
+//     return Scaffold(
+//       appBar: AppBar(title: const Text('Sales Prediction')),
+//       body: Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           children: [
+//             TextField(
+//               controller: _storeNameController,
+//               decoration: const InputDecoration(labelText: 'Store Name'),
+//             ),
+//             TextField(
+//               controller: _storeLocationController,
+//               decoration: const InputDecoration(labelText: 'Store Location'),
+//             ),
+//             const SizedBox(height: 20),
+//             Row(
+//               mainAxisAlignment: MainAxisAlignment.center,
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Container(
+//                   height: size.height * 0.5,
+//                   width: size.width * 0.3,
+//                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+//                   child: SingleChildScrollView(
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         ElevatedButton(
+//                           onPressed: _isLoadingCsv ? null : _loadCsvData,
+//                           child: _isLoadingCsv ? const CircularProgressIndicator() : const Text('Load Inventory'),
+//                         ),
+//                         const SizedBox(height: 10),
+//                         const Text("Inventory Data", style: TextStyle(fontWeight: FontWeight.bold)),
+//                         const SizedBox(height: 20),
+//                         Text(csv.isEmpty ? 'No Data.' : csv),
+//                       ],
+//                     ),
+//                   ),
+//                 ),
+//                 const SizedBox(width: 20),
+//                 Container(
+//                   height: size.height * 0.5,
+//                   width: size.width * 0.3,
+//                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       ElevatedButton(
+//                         onPressed: _isLoadingWeather ? null : _fetchWeatherData,
+//                         child: _isLoadingWeather ? const CircularProgressIndicator() : const Text('Fetch weather data'),
+//                       ),
+//                       const SizedBox(height: 10),
+//                       const Text("Weather Data", style: TextStyle(fontWeight: FontWeight.bold)),
+//                       const SizedBox(height: 20),
+//                       Text(_storeLocationController.text.isEmpty ? "No location data" : "location: ${_storeLocationController.text}"),
+//                       const SizedBox(height: 20),
+//                       weatherData == null
+//                           ? const Text("No Weather Data")
+//                           : Column(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               children: [
+//                                 Text("temperature: ${weatherData!.temperature}"),
+//                                 Text("rain: ${weatherData!.additionalProperties['rain']}"),
+//                                 Text("wind_speed: ${weatherData!.windSpeed}"),
+//                                 Text("humidity: ${weatherData!.humidity}"),
+//                                 Text("pressure: ${weatherData!.pressure}"),
+//                                 Text("visibility: ${weatherData!.visibility}"),
+//                                 Text("clouds: ${weatherData!.clouds}"),
+//                                 Text("weather: ${weatherData!.weatherMain}"),
+//                               ],
+//                             ),
+//                     ],
+//                   ),
+//                 ),
+//                 const SizedBox(width: 20),
+//                 Container(
+//                   height: size.height * 0.5,
+//                   width: size.width * 0.3,
+//                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       ElevatedButton(
+//                         onPressed: _isLoadingPrediction
+//                             ? null
+//                             : () {
+//                                 setState(() {
+//                                   _prediction = "";
+//                                 });
+//                                 _sendDataAndPredict();
+//                               },
+//                         child: _isLoadingPrediction ? const CircularProgressIndicator() : const Text('Predict Sales'),
+//                       ),
+//                       const SizedBox(height: 10),
+//                       const Text("Prediction", style: TextStyle(fontWeight: FontWeight.bold)),
+//                       const SizedBox(height: 20),
+//                       Text(_prediction.isEmpty ? 'Click Predict Sales' : 'Predicted Sales: $_prediction'),
+//                     ],
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class InventoryPreview {
+//   Future<List<List<dynamic>>> loadCsvFile() async {
+//     final completer = Completer<List<List<dynamic>>>();
+//     final input = html.FileUploadInputElement()..accept = '.csv';
+//     input.click();
+
+//     input.onChange.listen((e) {
+//       final reader = html.FileReader();
+//       reader.readAsText(input.files!.first);
+//       reader.onLoadEnd.listen((e) {
+//         final csvData = reader.result as String;
+//         final List<List<dynamic>> data = const CsvToListConverter().convert(csvData);
+//         completer.complete(data);
+//       });
+//     });
+
+//     return completer.future;
+//   }
+// }
+
+// // // // // end of main.dart
+
+
+
+
+
+// // // // // service.dart
+// // ignore_for_file: avoid_print
+
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:weather_app/models/weather_data.dart';
+
+// String apiID = '773211ac46a8a3e591f72ae278de8280';
+// String flaskAPIuri = 'http://127.0.0.1:5000';
+// String weatherURI = 'http://api.openweathermap.org';
+
+// class Services {
+//   Future<Map<String, dynamic>> uploadAndPredict({
+//     required BuildContext context,
+//     required WeatherData weatherData,
+//     required String storeName,
+//     required String storeLocation,
+//     required String csvData,
+//   }) async {
+//     try {
+//       final data = {
+//         ...weatherData.toJson(),
+//         'store_name': storeName,
+//         'store_location': storeLocation,
+//         'csv_data': csvData,
+//       };
+
+//       http.Response res = await http.post(
+//         Uri.parse('$flaskAPIuri/upload'),
+//         body: jsonEncode(data),
+//         headers: <String, String>{
+//           'Content-Type': 'application/json; charset=UTF-8',
+//         },
+//       );
+
+//       if (res.statusCode == 200) {
+//         return jsonDecode(res.body);
+//       } else {
+//         _httpErrorHandle(response: res, context: context);
+//         return {};
+//       }
+//     } catch (e) {
+//       print(e.toString());
+//       _showSnackbar(context: context, text: e.toString());
+//       return {};
+//     }
+//   }
+
+//   Future<WeatherData> fetchWeather({
+//     required BuildContext context,
+//     required String location,
+//   }) async {
+//     try {
+//       final weatherUrl = '$weatherURI/data/2.5/weather?q=$location&appid=$apiID&units=metric';
+
+//       http.Response res = await http.get(Uri.parse(weatherUrl));
+
+//       if (res.headers['content-type']?.contains('application/json') == true) {
+//         final weatherData = json.decode(res.body);
+//         final WeatherData weather = WeatherData(
+//           cityName: weatherData['name'],
+//           country: weatherData['sys']['country'],
+//           latitude: weatherData['coord']['lat'],
+//           longitude: weatherData['coord']['lon'],
+//           population: 0,
+//           sunrise: weatherData['sys']['sunrise'],
+//           sunset: weatherData['sys']['sunset'],
+//           timezone: weatherData['timezone'],
+//           temperature: weatherData['main']['temp'],
+//           feelsLike: weatherData['main']['feels_like'],
+//           humidity: weatherData['main']['humidity'],
+//           pressure: weatherData['main']['pressure'],
+//           visibility: weatherData['visibility'],
+//           windSpeed: weatherData['wind']['speed'],
+//           clouds: weatherData['clouds']['all'],
+//           weatherMain: weatherData['weather'][0]['main'],
+//           weatherDescription: weatherData['weather'][0]['description'],
+//           additionalProperties: {
+//             'rain': weatherData['rain']?['1h'] ?? 0,
+//             'wind_deg': weatherData['wind']['deg'],
+//             'wind_gust': weatherData['wind']['gust'],
+//           },
+//         );
+
+//         // print("Weather data: $weather");
+//         return weather;
+//       } else {
+//         throw const FormatException('Invalid JSON response');
+//       }
+//     } catch (e) {
+//       print(e.toString());
+//       _showSnackbar(context: context, text: e.toString());
+//       throw e;
+//     }
+//   }
+
+//   void _httpErrorHandle({
+//     required http.Response response,
+//     required BuildContext context,
+//   }) {
+//     switch (response.statusCode) {
+//       case 400:
+//         _showSnackbar(context: context, text: jsonDecode(response.body)['msg']);
+//         break;
+//       case 500:
+//         _showSnackbar(context: context, text: jsonDecode(response.body)['error']);
+//         break;
+//       default:
+//         _showSnackbar(context: context, text: response.body);
+//     }
+//   }
+
+//   void _showSnackbar({
+//     required BuildContext context,
+//     required String text,
+//   }) {
+//     final snackBar = SnackBar(content: Text(text));
+//     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+//   }
+// }
+
+// // // // // end of service.dart
+
+
+
+
+
+// // // // // app.py
+// from flask import Flask, request, jsonify
+// from flask_cors import CORS
+// import pandas as pd
+// from io import StringIO
+// import logging
+// from train import Train
+// from waitress import serve # type: ignore
+// import numpy as np  # Add this import
+
+// app = Flask(__name__)
+// CORS(app)
+
+// # logging.basicConfig(level=logging.DEBUG)
+// api_key = "773211ac46a8a3e591f72ae278de8280"
+
+// @app.route('/upload', methods=['POST'])
+// def upload_and_predict():
+//     data = request.get_json()
+
+//     # Extract weather data and CSV data from request
+//     temperature = data['temperature']
+//     wind_speed = data['wind_speed']
+//     humidity = data['humidity']
+//     pressure = data['pressure']
+//     visibility = data['visibility']
+//     clouds = data['clouds']
+//     weather_main = data['weather_main']
+//     store_location = data['store_location']
+//     csv_data = data['csv_data']
+
+//     # Read CSV data
+//     csv_file = StringIO(csv_data)
+//     inventory_data = pd.read_csv(csv_file)
+
+//     weather_data = {
+//         'main': {'temp': temperature, 'feels_like': temperature, 'humidity': humidity, 'pressure': pressure},
+//         'visibility': visibility,
+//         'wind': {'speed': wind_speed},
+//         'clouds': {'all': clouds},
+//         'weather': [{'main': weather_main}]
+//     }
+
+//     try:
+//         train = Train()
+//         X_train, X_test, y_train, y_test, model = train.preprocess_and_train(inventory_data, weather_data)
+//         if X_train is not None:
+//             restock_suggestions = train.make_prediction(inventory_data, location=store_location)
+//             # Convert restock_suggestions to a JSON serializable format
+//             restock_suggestions = [{k: (int(v) if isinstance(v, (np.int64, np.int32)) else v) for k, v in suggestion.items()} for suggestion in restock_suggestions]
+//             return jsonify({'predicted_sales': restock_suggestions})
+//         else:
+//             return jsonify({'error': 'Training data is not sufficient.'}), 400
+//     except Exception as e:
+//         logging.error(f"Error during upload_and_predict: {str(e)}")
+//         return jsonify({'error': str(e)}), 500
+
+// @app.route('/weather', methods=['GET'])
+// def get_weather():
+//     location = request.args.get('location')
+//     if not location:
+//         return jsonify({'error': 'Location is required'}), 400
+    
+//     weather_url = f'http://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}&units=metric'
+    
+//     response = request.get(weather_url)
+//     if response.status_code == 200:
+//         weather_data = response.json()
+//         return jsonify(weather_data), 200
+//     else:
+//         return jsonify({'error': 'Error fetching weather data'}), response.status_code
+
+// if __name__ == '__main__':
+//     app.run(debug=True)
+//     serve(app, host="0.0.0.0", port=5000)
+
+// // // // // end of app.py
+
+
+
+
+
+// // // // // train.py
+// import pandas as pd
+// from sklearn.model_selection import train_test_split, GridSearchCV
+// from sklearn.utils import shuffle
+// import matplotlib
+// matplotlib.use('Agg')  # Use Agg backend for non-GUI environments
+// import matplotlib.pyplot as plt
+// import seaborn as sns
+// from sklearn.ensemble import RandomForestRegressor
+// from sklearn.metrics import mean_squared_error, r2_score
+// import joblib
+// import requests
+
+// api_key = "773211ac46a8a3e591f72ae278de8280"
+
+
+// class Train:
+//     REORDER_LEVEL = 50
+//     MIN_REORDER_QUANTITY = 100
+
+//     def __init__(self):
+//         self.model = None
+
+//     # Step 2: Preparing the Data
+//     def preprocess_data(self, inventory_data, weather_data):
+//         weather_dict = {
+//             'temp': weather_data['main']['temp'],
+//             'feels_like': weather_data['main']['feels_like'],
+//             'humidity': weather_data['main']['humidity'],
+//             'pressure': weather_data['main']['pressure'],
+//             'visibility': weather_data['visibility'],
+//             'wind_speed': weather_data['wind']['speed'],
+//             'rain': weather_data.get('rain', {}).get('1h', 0),
+//             'clouds': weather_data['clouds']['all'],
+//             'weather': weather_data['weather'][0]['main']
+//         }
+
+//         weather_df = pd.DataFrame([weather_dict])
+//         df = pd.concat([inventory_data, weather_df], axis=1)
+//         df = shuffle(df)
+//         df.fillna(method='ffill', inplace=True)
+//         df.fillna(method='bfill', inplace=True)
+//         df.interpolate(method='linear', inplace=True)
+//         df.dropna(subset=['Sales'], inplace=True)
+//         df = df.convert_dtypes()
+//         numeric_df = df.select_dtypes(include=['number'])
+
+//         return numeric_df
+
+//     def visualize_data(self, df):
+//         sns.pairplot(df)
+//         plt.savefig('pairplot.png')  # Save plot as an image
+//         plt.close()
+//         plt.figure(figsize=(12, 8))
+//         sns.heatmap(df.corr(), annot=True, cmap='coolwarm')
+//         plt.savefig('heatmap.png')  # Save plot as an image
+//         plt.close()
+
+//     def choose_model(self):
+//         return RandomForestRegressor(n_estimators=100, random_state=42)
+
+//     def train_model(self, model, X_train, y_train):
+//         model.fit(X_train, y_train)
+//         self.model = model  # Store the model
+//         return model
+
+//     def evaluate_model(self, model, X_test, y_test):
+//         predictions = model.predict(X_test)
+//         mse = mean_squared_error(y_test, predictions)
+//         r2 = r2_score(y_test, predictions)
+//         return mse, r2, predictions
+
+//     def tune_model(self, model, X_train, y_train):
+//         parameters = {'n_estimators': [50, 100, 200], 'max_depth': [None, 10, 20, 30]}
+//         grid_search = GridSearchCV(model, parameters, cv=5)
+//         grid_search.fit(X_train, y_train)
+//         self.model = grid_search.best_estimator_  # Store the best estimator
+//         return grid_search.best_estimator_
+
+//     def preprocess_and_train(self, inventory_data, weather_data):
+//         preprocessed_data = self.preprocess_data(inventory_data, weather_data)
+//         self.visualize_data(preprocessed_data)
+
+//         if 'Sales' in preprocessed_data.columns:
+//             features = preprocessed_data[['temp', 'feels_like', 'humidity', 'pressure', 'visibility', 'wind_speed', 'rain', 'clouds']]
+//             target = preprocessed_data['Sales']
+
+//             X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+//             model = self.choose_model()
+//             model = self.train_model(model, X_train, y_train)
+//             mse, r2, predictions = self.evaluate_model(model, X_test, y_test)
+//             print(f"Model Performance: MSE = {mse}, R2 = {r2}")
+//             model = self.tune_model(model, X_train, y_train)
+//             joblib.dump(model, 'sales_prediction_model.pkl')
+//             return X_train, X_test, y_train, y_test, model
+//         else:
+//             return None, None, None, None, None
+
+//     def get_weather_data(self, location):
+//         url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}&units=metric"
+//         response = requests.get(url)
+//         weather_data = response.json()
+//         return weather_data
+
+//     def make_prediction(self, inventory_data, location):
+//         # Load the model
+//         model = joblib.load('sales_prediction_model.pkl')
+
+//         # Get weather data
+//         weather_data = self.get_weather_data(location)
+
+//         # Extract relevant weather information
+//         weather_info = {
+//             'temp': weather_data['main']['temp'],
+//             'feels_like': weather_data['main']['feels_like'],
+//             'humidity': weather_data['main']['humidity'],
+//             'pressure': weather_data['main']['pressure'],
+//             'visibility': weather_data['visibility'],
+//             'wind_speed': weather_data['wind']['speed'],
+//             'rain': weather_data.get('rain', {}).get('1h', 0),
+//             'clouds': weather_data['clouds']['all'],
+//             'weather': weather_data['weather'][0]['main']
+//         }
+
+//         # Ensure that only numeric columns are used for prediction
+//         numeric_columns = ['temp', 'feels_like', 'humidity', 'pressure', 'visibility', 'wind_speed', 'rain', 'clouds']
+
+//         # Prepare data for prediction
+//         prediction_data = []
+//         for _, row in inventory_data.iterrows():
+//             item_data = [weather_info[col] for col in numeric_columns]
+//             prediction_data.append(item_data)
+
+//         prediction_data = pd.DataFrame(prediction_data, columns=numeric_columns)
+
+//         # Make predictions
+//         predictions = model.predict(prediction_data)
+
+//         # Generate restock suggestions
+//         restock_suggestions = []
+//         for i, pred in enumerate(predictions):
+//             # Use index as unique identifier
+//             item_id = int(i)  # Ensure the item_id is a standard Python int
+//             current_stock = int(inventory_data.iloc[i]['Quantity'])  # Ensure current_stock is a standard Python int
+//             predicted_demand = float(pred)  # Convert predicted demand to float
+
+//             restock_quantity = max(0, self.MIN_REORDER_QUANTITY - current_stock) if current_stock < self.REORDER_LEVEL else 0
+
+//             if restock_quantity > 0:
+//                 restock_suggestions.append({
+//                     'item_id': item_id,
+//                     'current_stock': current_stock,
+//                     'predicted_demand': predicted_demand,
+//                     'restock_quantity': restock_quantity
+//                 })
+
+//         return restock_suggestions
+
+// if __name__ == "__main__":
+//     print("This file is intended to be imported and used as a module.")
+
+// // // // // end of train.py

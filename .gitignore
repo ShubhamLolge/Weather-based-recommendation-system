@@ -1245,3 +1245,4 @@ venv/lib/python3.9/site-packages/seaborn-0.13.2.dist-info/RECORD
 venv/lib/python3.9/site-packages/seaborn-0.13.2.dist-info/REQUESTED
 venv/lib/python3.9/site-packages/seaborn-0.13.2.dist-info/WHEEL
 venv/share/man/man1/ttx.1
+.vscode/launch.json
