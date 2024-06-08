@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -40,7 +38,7 @@ class Services {
         return {};
       }
     } catch (e) {
-      print(e.toString());
+      debugPrint(e.toString());
       _showSnackbar(context: context, text: e.toString());
       return {};
     }
@@ -53,16 +51,20 @@ class Services {
     try {
       final weatherUrl = '$weatherURI/data/2.5/weather?q=$location&appid=$apiID&units=metric';
 
+      // Make a GET request to the /weather endpoint
       http.Response res = await http.get(Uri.parse(weatherUrl));
 
+      // Check if response is valid JSON
       if (res.headers['content-type']?.contains('application/json') == true) {
         final weatherData = json.decode(res.body);
+
+        // Create WeatherData object
         final WeatherData weather = WeatherData(
           cityName: weatherData['name'],
           country: weatherData['sys']['country'],
           latitude: weatherData['coord']['lat'],
           longitude: weatherData['coord']['lon'],
-          population: 0,
+          population: 0, // Add population if available
           sunrise: weatherData['sys']['sunrise'],
           sunset: weatherData['sys']['sunset'],
           timezone: weatherData['timezone'],
@@ -82,13 +84,13 @@ class Services {
           },
         );
 
-        // print("Weather data: $weather");
+        debugPrint("Weather data: $weather");
         return weather;
       } else {
         throw const FormatException('Invalid JSON response');
       }
     } catch (e) {
-      print(e.toString());
+      debugPrint(e.toString());
       _showSnackbar(context: context, text: e.toString());
       throw e;
     }

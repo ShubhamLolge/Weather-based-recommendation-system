@@ -101,6 +101,7 @@ class Train:
         weather_data = response.json()
         return weather_data
 
+
     def make_prediction(self, inventory_data, location):
         # Load the model
         model = joblib.load('sales_prediction_model.pkl')
@@ -132,25 +133,30 @@ class Train:
 
         prediction_data = pd.DataFrame(prediction_data, columns=numeric_columns)
 
+        # Debug: Print the first few rows of prediction_data to ensure correctness
+        # print("Prediction data sample:")
+        # print(prediction_data.head())
+
         # Make predictions
         predictions = model.predict(prediction_data)
 
         # Generate restock suggestions
         restock_suggestions = []
         for i, pred in enumerate(predictions):
-            # Use index as unique identifier
-            item_id = int(i)  # Ensure the item_id is a standard Python int
-            current_stock = int(inventory_data.iloc[i]['Quantity'])  # Ensure current_stock is a standard Python int
-            predicted_demand = float(pred)  # Convert predicted demand to float
-
+            item_name = inventory_data.iloc[i]['Item Name']
+            item_id = int(i)
+            current_stock = inventory_data.iloc[i]['Quantity']
+            predicted_demand = pred
+            
             restock_quantity = max(0, self.MIN_REORDER_QUANTITY - current_stock) if current_stock < self.REORDER_LEVEL else 0
-
+            
             if restock_quantity > 0:
                 restock_suggestions.append({
+                    'item_name': item_name,
                     'item_id': item_id,
-                    'current_stock': current_stock,
-                    'predicted_demand': predicted_demand,
-                    'restock_quantity': restock_quantity
+                    'current_stock': int(current_stock),
+                    'predicted_demand': float(pred),
+                    'restock_quantity': int(restock_quantity)
                 })
 
         return restock_suggestions

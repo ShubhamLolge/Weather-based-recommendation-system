@@ -39,8 +39,7 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
   final Services services = Services();
 
   List<List<dynamic>> _csvData = [];
-  List<Map<String, dynamic>> _predictions = []; // Change this to a list of maps
-
+  List<Map<String, dynamic>> _predictions = [];
   String csv = "";
 
   WeatherData? weatherData;
@@ -85,7 +84,7 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
         debugPrint(e.toString());
         setState(() {
           _predictions = [
-            {'Error': 'Could not fetch weather data.'}
+            {'error': 'Error: Could not fetch weather data.'}
           ];
           _isLoadingWeather = false;
         });
@@ -93,7 +92,7 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
     } else {
       setState(() {
         _predictions = [
-          {'Error': 'Please enter a location'}
+          {'error': 'Please enter a location'}
         ];
       });
     }
@@ -103,7 +102,7 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
     if (_csvData.isEmpty) {
       setState(() {
         _predictions = [
-          {'Error': 'Please upload inventory data first.'}
+          {'error': 'Please upload inventory data first.'}
         ];
       });
       return;
@@ -115,7 +114,7 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
     if (weatherData == null) {
       setState(() {
         _predictions = [
-          {'Error': 'Please fetch weather data first.'}
+          {'error': 'Please fetch weather data first.'}
         ];
       });
       return;
@@ -137,11 +136,16 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
       );
 
       setState(() {
-        if (data.containsKey('predicted_sales')) {
+        if (data.containsKey('predicted_sales') && data['predicted_sales'] != null) {
           _predictions = List<Map<String, dynamic>>.from(data['predicted_sales']);
+          if (_predictions.isEmpty) {
+            _predictions = [
+              {'error': 'No predictions received.'}
+            ];
+          }
         } else {
           _predictions = [
-            {'Error': 'Could not fetch prediction.'}
+            {'error': 'Invalid prediction data received.'}
           ];
         }
         _isLoadingPrediction = false;
@@ -150,7 +154,7 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
       debugPrint('Exception: $e');
       setState(() {
         _predictions = [
-          {'Error': 'Could not fetch prediction.'}
+          {'error': 'Error: Could not fetch prediction.'}
         ];
         _isLoadingPrediction = false;
       });
@@ -239,40 +243,45 @@ class SalesPredictionPageState extends State<SalesPredictionPage> {
                   height: size.height * 0.5,
                   width: size.width * 0.3,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _isLoadingPrediction
-                            ? null
-                            : () {
-                                setState(() {
-                                  _predictions = [];
-                                });
-                                _sendDataAndPredict();
-                              },
-                        child: _isLoadingPrediction ? const CircularProgressIndicator() : const Text('Predict Sales'),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text("Prediction", style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 20),
-                      _predictions.isEmpty
-                          ? const Text('Click Predict Sales')
-                          : Expanded(
-                              child: ListView.builder(
-                                itemCount: _predictions.length,
-                                itemBuilder: (context, index) {
-                                  final prediction = _predictions[index];
-                                  return ListTile(
-                                    title: Text('Item ID: ${prediction['item_id']}'),
-                                    subtitle: Text(
-                                      'Current Stock: ${prediction['current_stock']}, Predicted Demand: ${prediction['predicted_demand']}, Restock Quantity: ${prediction['restock_quantity']}',
-                                    ),
-                                  );
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _isLoadingPrediction
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _predictions = [];
+                                  });
+                                  _sendDataAndPredict();
                                 },
+                          child: _isLoadingPrediction ? const CircularProgressIndicator() : const Text('Predict Sales'),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text("Prediction", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 20),
+                        _predictions.isEmpty
+                            ? const Text('Click Predict Sales')
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: _predictions.map((prediction) {
+                                  if (prediction.containsKey('error')) {
+                                    return Text(prediction['error']);
+                                  }
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Item: ${prediction['item_name']} (ID: ${prediction['item_id']})"),
+                                      Text(
+                                          "Current Stock: ${prediction['current_stock']}, Predicted Demand: ${prediction['predicted_demand']}, Restock Quantity: ${prediction['restock_quantity']}"),
+                                      const SizedBox(height: 10),
+                                    ],
+                                  );
+                                }).toList(),
                               ),
-                            ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -307,8 +316,6 @@ class InventoryPreview {
 
 
 // // // // services.dart
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -349,7 +356,7 @@ class Services {
         return {};
       }
     } catch (e) {
-      print(e.toString());
+      debugPrint(e.toString());
       _showSnackbar(context: context, text: e.toString());
       return {};
     }
@@ -362,16 +369,20 @@ class Services {
     try {
       final weatherUrl = '$weatherURI/data/2.5/weather?q=$location&appid=$apiID&units=metric';
 
+      // Make a GET request to the /weather endpoint
       http.Response res = await http.get(Uri.parse(weatherUrl));
 
+      // Check if response is valid JSON
       if (res.headers['content-type']?.contains('application/json') == true) {
         final weatherData = json.decode(res.body);
+
+        // Create WeatherData object
         final WeatherData weather = WeatherData(
           cityName: weatherData['name'],
           country: weatherData['sys']['country'],
           latitude: weatherData['coord']['lat'],
           longitude: weatherData['coord']['lon'],
-          population: 0,
+          population: 0, // Add population if available
           sunrise: weatherData['sys']['sunrise'],
           sunset: weatherData['sys']['sunset'],
           timezone: weatherData['timezone'],
@@ -391,13 +402,13 @@ class Services {
           },
         );
 
-        // print("Weather data: $weather");
+        debugPrint("Weather data: $weather");
         return weather;
       } else {
         throw const FormatException('Invalid JSON response');
       }
     } catch (e) {
-      print(e.toString());
+      debugPrint(e.toString());
       _showSnackbar(context: context, text: e.toString());
       throw e;
     }
@@ -680,6 +691,7 @@ def upload_and_predict():
     visibility = data['visibility']
     clouds = data['clouds']
     weather_main = data['weather_main']
+    store_name = data['store_name']
     store_location = data['store_location']
     csv_data = data['csv_data']
 
@@ -699,56 +711,13 @@ def upload_and_predict():
         train = Train()
         X_train, X_test, y_train, y_test, model = train.preprocess_and_train(inventory_data, weather_data)
         if X_train is not None:
-            restock_suggestions = train.make_prediction(inventory_data, location=store_location)
-            # Convert restock_suggestions to a JSON serializable format
-            restock_suggestions = [{k: (int(v) if isinstance(v, (np.int64, np.int32)) else v) for k, v in suggestion.items()} for suggestion in restock_suggestions]
-            return jsonify({'predicted_sales': restock_suggestions})
+            predictions = train.make_prediction(inventory_data, location=store_location)
+            return jsonify({'predicted_sales': predictions})
         else:
             return jsonify({'error': 'Training data is not sufficient.'}), 400
     except Exception as e:
         logging.error(f"Error during upload_and_predict: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-# @app.route('/upload', methods=['POST'])
-# def upload_and_predict():
-#     data = request.get_json()
-
-#     # Extract weather data and CSV data from request
-#     temperature = data['temperature']
-#     wind_speed = data['wind_speed']
-#     humidity = data['humidity']
-#     pressure = data['pressure']
-#     visibility = data['visibility']
-#     clouds = data['clouds']
-#     weather_main = data['weather_main']
-#     store_location = data['store_location']
-#     csv_data = data['csv_data']
-
-#     # Read CSV data
-#     csv_file = StringIO(csv_data)
-#     inventory_data = pd.read_csv(csv_file)
-
-#     weather_data = {
-#         'main': {'temp': temperature, 'feels_like': temperature, 'humidity': humidity, 'pressure': pressure},
-#         'visibility': visibility,
-#         'wind': {'speed': wind_speed},
-#         'clouds': {'all': clouds},
-#         'weather': [{'main': weather_main}]
-#     }
-
-#     try:
-#         train = Train()
-#         X_train, X_test, y_train, y_test, model = train.preprocess_and_train(inventory_data, weather_data)
-#         if X_train is not None:
-#             restock_suggestions = train.make_prediction(inventory_data, location=store_location)
-#             # Convert restock_suggestions to a JSON serializable format
-#             restock_suggestions = [{k: (int(v) if isinstance(v, (np.int64, np.int32)) else v) for k, v in suggestion.items()} for suggestion in restock_suggestions]
-#             return jsonify({'predicted_sales': restock_suggestions})
-#         else:
-#             return jsonify({'error': 'Training data is not sufficient.'}), 400
-#     except Exception as e:
-#         logging.error(f"Error during upload_and_predict: {str(e)}")
-#         return jsonify({'error': str(e)}), 500
 
 @app.route('/weather', methods=['GET'])
 def get_weather():
@@ -875,6 +844,7 @@ class Train:
         weather_data = response.json()
         return weather_data
 
+
     def make_prediction(self, inventory_data, location):
         # Load the model
         model = joblib.load('sales_prediction_model.pkl')
@@ -906,29 +876,35 @@ class Train:
 
         prediction_data = pd.DataFrame(prediction_data, columns=numeric_columns)
 
+        # Debug: Print the first few rows of prediction_data to ensure correctness
+        # print("Prediction data sample:")
+        # print(prediction_data.head())
+
         # Make predictions
         predictions = model.predict(prediction_data)
 
         # Generate restock suggestions
         restock_suggestions = []
         for i, pred in enumerate(predictions):
-            # Use index as unique identifier
-            item_id = int(i)  # Ensure the item_id is a standard Python int
-            current_stock = int(inventory_data.iloc[i]['Quantity'])  # Ensure current_stock is a standard Python int
-            predicted_demand = float(pred)  # Convert predicted demand to float
-
+            item_name = inventory_data.iloc[i]['Item Name']
+            item_id = int(i)
+            current_stock = inventory_data.iloc[i]['Quantity']
+            predicted_demand = pred
+            
             restock_quantity = max(0, self.MIN_REORDER_QUANTITY - current_stock) if current_stock < self.REORDER_LEVEL else 0
-
+            
             if restock_quantity > 0:
                 restock_suggestions.append({
+                    'item_name': item_name,
                     'item_id': item_id,
-                    'current_stock': current_stock,
-                    'predicted_demand': predicted_demand,
-                    'restock_quantity': restock_quantity
+                    'current_stock': int(current_stock),
+                    'predicted_demand': float(pred),
+                    'restock_quantity': int(restock_quantity)
                 })
 
         return restock_suggestions
 
 if __name__ == "__main__":
     print("This file is intended to be imported and used as a module.")
+
 
